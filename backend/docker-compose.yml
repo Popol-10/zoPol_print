@@ -1,0 +1,22 @@
+services:
+  mysql:
+    image: mysql:8.4
+    container_name: makart-mysql
+    restart: unless-stopped
+    environment:
+      MYSQL_DATABASE: makart
+      MYSQL_USER: makart
+      MYSQL_PASSWORD: change-me
+      MYSQL_ROOT_PASSWORD: change-root-password
+    ports:
+      - "3307:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-uroot", "-pchange-root-password"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  mysql_data:

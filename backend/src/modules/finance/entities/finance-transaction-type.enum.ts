@@ -1,0 +1,7 @@
+export enum FinanceTransactionType {
+  INCOME = 'INCOME',
+  EXPENSE = 'EXPENSE',
+  OPENING_BALANCE = 'OPENING_BALANCE',
+  TRANSFER_OUT = 'TRANSFER_OUT',
+  TRANSFER_IN = 'TRANSFER_IN',
+}

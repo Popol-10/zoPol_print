@@ -1,0 +1,6 @@
+export enum MachineStatus {
+  ACTIVE = 'ACTIVE',
+  MAINTENANCE = 'MAINTENANCE',
+  OFFLINE = 'OFFLINE',
+  ATTENTION = 'ATTENTION',
+}
