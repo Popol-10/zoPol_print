@@ -1,6 +1,6 @@
 # Rapport d'intégration backend ERP
 
-**Mise à jour :** 17 octobre 2026
+**Mise à jour :** 19 octobre 2026
 
 Ce document suit le raccordement des écrans ERP aux API et à la base MySQL, module par module. Les migrations sont versionnées ; aucune synchronisation automatique du schéma n'est activée.
 
@@ -32,6 +32,23 @@ Ce document suit le raccordement des écrans ERP aux API et à la base MySQL, mo
 | Statistiques          | Agrégats de ventes, marge estimée, production et stock              | Connectée aux données API                            | Intégré      |
 | Rapports              | Exports CSV construits depuis les agrégats Dashboard                | Connectée ; Finance/RH soumis aux rôles              | Intégré      |
 | Notifications         | Activités, alertes calculées et préférences ; migrations appliquées | Cloche et réglages ERP raccordés                     | Intégré      |
+
+## Déploiement Vercel — 19 octobre 2026
+
+- Le frontend utilisait `http://localhost:3001/api/v1` par défaut même dans un bundle de production ; depuis Vercel, cette adresse pointe sur l'ordinateur du visiteur et explique l'erreur « Impossible de joindre le serveur ».
+- En développement local, cette valeur de secours est conservée. En production, l'absence de `VITE_API_URL`, une URL locale, relative ou en HTTP affiche désormais une erreur de configuration explicite. Les erreurs réseau donnent aussi des pistes sur l'URL publique et CORS.
+- CORS autorise par défaut le domaine `https://zo-print.vercel.app`, et conserve les origines de développement locales. Les déploiements Preview doivent autoriser leur origine exacte dans `FRONTEND_ORIGINS`.
+- Ajout du guide [`vercel-deployment.md`](vercel-deployment.md) : l'API NestJS et MySQL doivent être hébergées séparément, `VITE_API_URL` doit pointer sur l'API publique et une nouvelle version Vercel doit être construite après changement de variable.
+- La variable Vercel et l'hébergement distant n'étant pas accessibles depuis ce dépôt, il reste à renseigner l'URL réelle de l'API dans le projet Vercel et à redéployer. Aucun secret n'est placé dans le frontend.
+
+## Préparation du déploiement API — 19 octobre 2026
+
+- Le propriétaire du projet a confirmé que l'API n'est pas encore hébergée ; le domaine API et `VITE_API_URL` ne peuvent donc pas encore être renseignés.
+- Ajout de `backend/Dockerfile` et `.dockerignore` pour construire l'API NestJS et exécuter l'application avec les dépendances de production.
+- Ajout du script `migration:run:prod`, qui applique les migrations TypeORM compilées, et de `backend/railway.json` pour les exécuter avant le déploiement et contrôler `/api/v1/health`.
+- Le guide Vercel décrit maintenant la création d'un service MySQL privé et d'un service API Railway, les variables requises, puis le raccordement du domaine API au projet Vercel. Les secrets restent saisis dans les tableaux de bord d'hébergement.
+- Étapes encore à faire côté propriétaire : pousser le dépôt sur GitHub, créer les services Railway et leur fournir les variables, générer le domaine API, renseigner `VITE_API_URL` dans Vercel et redéployer le frontend. Le coût de l'hébergeur dépend du plan et de l'usage.
+- Tests et builds non exécutés dans cette tranche.
 
 ## Module Clients — 26 septembre 2026
 

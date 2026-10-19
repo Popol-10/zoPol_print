@@ -15,6 +15,8 @@ npm run start:dev
 
 L'API est alors disponible sur `http://localhost:3001/api/v1` et la documentation Swagger sur `http://localhost:3001/api/docs` en développement.
 
+Le frontend déployé sur Vercel ne démarre pas cette API : il faut déployer `backend/` séparément, puis définir `VITE_API_URL` dans les variables Vercel et `FRONTEND_ORIGINS` côté API. Le dépôt contient une configuration Railway (Docker, migrations et health check). Suivre [`docs/vercel-deployment.md`](docs/vercel-deployment.md).
+
 ## Commandes utiles
 
 ```bash

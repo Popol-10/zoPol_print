@@ -30,7 +30,9 @@ export function validateEnvironment(config: Record<string, unknown>): Environmen
     NODE_ENV: Joi.string().valid('development', 'test', 'production').default('development'),
     PORT: Joi.number().port().default(3001),
     API_PREFIX: Joi.string().default('api/v1'),
-    FRONTEND_ORIGINS: Joi.string().default('http://localhost:5173'),
+    FRONTEND_ORIGINS: Joi.string().default(
+      'http://localhost:5173,http://localhost:8080,http://127.0.0.1:8080,https://zo-print.vercel.app',
+    ),
     MYSQL_HOST: Joi.string().hostname().required(),
     MYSQL_PORT: Joi.number().port().default(3306),
     MYSQL_DATABASE: Joi.string().max(64).required(),

@@ -8,17 +8,59 @@ export class ApiError extends Error {
   }
 }
 
+const configuredApiBaseUrl = import.meta.env.VITE_API_URL?.trim();
 const apiBaseUrl = (
-  import.meta.env.VITE_API_URL ?? "http://localhost:3001/api/v1"
+  configuredApiBaseUrl ??
+  (import.meta.env.DEV ? "http://localhost:3001/api/v1" : "")
 ).replace(/\/$/, "");
+
+function getApiBaseUrl(): string {
+  if (!apiBaseUrl) {
+    throw new ApiError(
+      "L’API n’est pas configurée pour ce déploiement. Définissez VITE_API_URL avec l’adresse publique de l’API, terminée par /api/v1, puis redéployez.",
+    );
+  }
+  if (import.meta.env.PROD) {
+    let parsedUrl: URL;
+    try {
+      parsedUrl = new URL(apiBaseUrl);
+    } catch {
+      throw new ApiError(
+        "VITE_API_URL doit être une URL HTTPS publique complète, terminée par /api/v1.",
+      );
+    }
+    if (parsedUrl.protocol !== "https:") {
+      throw new ApiError(
+        "L’API doit utiliser HTTPS pour être appelée depuis le site Vercel.",
+      );
+    }
+    if (
+      ["localhost", "127.0.0.1", "::1", "[::1]"].includes(parsedUrl.hostname)
+    ) {
+      throw new ApiError(
+        "VITE_API_URL pointe vers localhost, inaccessible depuis Vercel. Configurez l’adresse HTTPS publique de votre API puis redéployez.",
+      );
+    }
+    if (!parsedUrl.pathname.replace(/\/+$/, "").endsWith("/api/v1")) {
+      throw new ApiError(
+        "VITE_API_URL doit se terminer par /api/v1 pour joindre les routes de l’API.",
+      );
+    }
+  }
+  return apiBaseUrl;
+}
+
+const connectionErrorMessage =
+  "Impossible de contacter l’API. Vérifiez son adresse publique, qu’elle est démarrée et que CORS autorise https://zo-print.vercel.app.";
 
 export async function apiRequest<T>(
   path: string,
   init: RequestInit = {},
 ): Promise<T> {
   let response: Response;
+  const baseUrl = getApiBaseUrl();
   try {
-    response = await fetch(`${apiBaseUrl}${path}`, {
+    response = await fetch(`${baseUrl}${path}`, {
       ...init,
       headers: {
         Accept: "application/json",
@@ -30,9 +72,7 @@ export async function apiRequest<T>(
       },
     });
   } catch {
-    throw new ApiError(
-      "Impossible de joindre le serveur. Vérifiez que l’API est démarrée.",
-    );
+    throw new ApiError(connectionErrorMessage);
   }
 
   if (response.status === 204) return undefined as T;
@@ -63,15 +103,14 @@ export async function apiBlobRequest(
   init: RequestInit = {},
 ): Promise<Blob> {
   let response: Response;
+  const baseUrl = getApiBaseUrl();
   try {
-    response = await fetch(`${apiBaseUrl}${path}`, {
+    response = await fetch(`${baseUrl}${path}`, {
       ...init,
       headers: { Accept: "image/*", ...init.headers },
     });
   } catch {
-    throw new ApiError(
-      "Impossible de joindre le serveur. Vérifiez que l’API est démarrée.",
-    );
+    throw new ApiError(connectionErrorMessage);
   }
 
   if (!response.ok) {

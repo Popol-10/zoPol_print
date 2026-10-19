@@ -8,7 +8,10 @@ import { HttpExceptionFilter } from './common/filters/http-exception.filter';
 async function bootstrap(): Promise<void> {
   const app = await NestFactory.create(AppModule, { bufferLogs: true });
   const prefix = process.env.API_PREFIX ?? 'api/v1';
-  const origins = (process.env.FRONTEND_ORIGINS ?? 'http://localhost:5173')
+  const origins = (
+    process.env.FRONTEND_ORIGINS ??
+    'http://localhost:5173,http://localhost:8080,http://127.0.0.1:8080,https://zo-print.vercel.app'
+  )
     .split(',')
     .map((origin) => origin.trim())
     .filter(Boolean);
