@@ -32,6 +32,7 @@ import { Invoice } from '../modules/invoices/entities/invoice.entity';
 import { InvoiceLine } from '../modules/invoices/entities/invoice-line.entity';
 
 const env = validateEnvironment(process.env);
+const connectionLimit = env.MYSQL_CONNECTION_LIMIT;
 
 export default new DataSource({
   type: 'mysql',
@@ -42,7 +43,11 @@ export default new DataSource({
   database: env.MYSQL_DATABASE,
   ssl: env.MYSQL_SSL ? { rejectUnauthorized: true } : undefined,
   extra: {
-    connectionLimit: env.MYSQL_CONNECTION_LIMIT,
+    connectionLimit,
+    maxIdle: Math.max(0, connectionLimit - 1),
+    idleTimeout: 60_000,
+    enableKeepAlive: true,
+    keepAliveInitialDelay: 10_000,
     waitForConnections: true,
   },
   timezone: 'Z',

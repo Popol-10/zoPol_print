@@ -6,6 +6,7 @@ import {
   useState,
 } from "react";
 import {
+  ApiError,
   authApi,
   clearAuthSession,
   readAuthSession,
@@ -47,6 +48,20 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     let mounted = true;
+    const onSessionUpdated = (event: Event) => {
+      const refreshed = (event as CustomEvent<AuthResponse>).detail;
+      if (mounted && refreshed?.user && refreshed.tokens) establish(refreshed);
+    };
+    const onSessionInvalidated = () => {
+      if (!mounted) return;
+      clearAuthSession();
+      setUser(null);
+      setStatus("unauthenticated");
+    };
+
+    window.addEventListener("auth-session-updated", onSessionUpdated);
+    window.addEventListener("auth-session-invalidated", onSessionInvalidated);
+
     const restore = async () => {
       const session = readAuthSession();
       if (!session) {
@@ -56,14 +71,28 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       try {
         const response = await authApi.refresh(session.tokens.refreshToken);
         if (mounted) establish(response);
-      } catch {
-        clearAuthSession();
-        if (mounted) setStatus("unauthenticated");
+      } catch (reason) {
+        if (!mounted) return;
+        if (reason instanceof ApiError && reason.status === 401) {
+          clearAuthSession();
+          setUser(null);
+          setStatus("unauthenticated");
+          return;
+        }
+
+        // A temporary API/database outage must not erase a valid local session.
+        setUser(session.user);
+        setStatus("authenticated");
       }
     };
     void restore();
     return () => {
       mounted = false;
+      window.removeEventListener("auth-session-updated", onSessionUpdated);
+      window.removeEventListener(
+        "auth-session-invalidated",
+        onSessionInvalidated,
+      );
     };
   }, [establish]);
 

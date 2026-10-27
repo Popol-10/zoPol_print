@@ -142,10 +142,22 @@ export class MailService {
           </div>
         `,
       });
-      const accepted = result.accepted.some((address) =>
-        (typeof address === 'string' ? address : address.address).toLowerCase() ===
-        quote.recipient.trim().toLowerCase(),
-      );
+      const acceptedRecipients: unknown = result.accepted;
+      const expectedRecipient = quote.recipient.trim().toLowerCase();
+      const accepted =
+        Array.isArray(acceptedRecipients) &&
+        acceptedRecipients.some((entry: unknown) => {
+          const address =
+            typeof entry === 'string'
+              ? entry
+              : typeof entry === 'object' &&
+                  entry !== null &&
+                  'address' in entry &&
+                  typeof entry.address === 'string'
+                ? entry.address
+                : '';
+          return address.toLowerCase() === expectedRecipient;
+        });
       if (!accepted) {
         throw new ServiceUnavailableException(
           'Le serveur de messagerie n’a pas accepté l’adresse du client.',

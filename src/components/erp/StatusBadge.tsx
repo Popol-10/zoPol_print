@@ -20,6 +20,9 @@ type Status =
   | "Émise"
   | "Partiellement payée"
   | "Payée"
+  | "Entrée"
+  | "Sortie"
+  | "Ajustement"
   | "Planifiée"
   | "En cours"
   | "Terminée"
@@ -60,6 +63,9 @@ const styles: Record<string, string> = {
   Émise: "bg-blue-50 text-blue-700 ring-blue-100",
   "Partiellement payée": "bg-amber-50 text-amber-800 ring-amber-100",
   Payée: "bg-emerald-50 text-emerald-700 ring-emerald-100",
+  Entrée: "bg-emerald-50 text-emerald-700 ring-emerald-100",
+  Sortie: "bg-rose-50 text-rose-700 ring-rose-100",
+  Ajustement: "bg-amber-50 text-amber-800 ring-amber-100",
   Planifiée: "bg-blue-50 text-blue-700 ring-blue-100",
   "En cours": "bg-amber-50 text-amber-800 ring-amber-100",
   Terminée: "bg-emerald-50 text-emerald-700 ring-emerald-100",

@@ -5,7 +5,7 @@ import {
   useState,
   type FormEvent,
 } from "react";
-import { CheckCircle2, Mail, Plus } from "lucide-react";
+import { CheckCircle2, FileText, Mail, Plus } from "lucide-react";
 import { currencyUnitLabel, formatAr } from "@/utils/format";
 import {
   PageHeader,
@@ -54,14 +54,18 @@ function localDate(offsetDays = 0): string {
   return local.toISOString().slice(0, 10);
 }
 
-function quoteStatusLabel(status: QuoteStatus): string {
-  return {
-    DRAFT: "Brouillon",
-    SENT: "Envoyé",
-    ACCEPTED: "Accepté",
-    REFUSED: "Refusé",
-    EXPIRED: "Expiré",
-  }[status];
+type QuoteStatusLabel = "Brouillon" | "Envoyé" | "Accepté" | "Refusé" | "Expiré";
+
+const quoteStatusLabels = {
+  DRAFT: "Brouillon",
+  SENT: "Envoyé",
+  ACCEPTED: "Accepté",
+  REFUSED: "Refusé",
+  EXPIRED: "Expiré",
+} as const satisfies Record<QuoteStatus, QuoteStatusLabel>;
+
+function quoteStatusLabel(status: QuoteStatus): QuoteStatusLabel {
+  return quoteStatusLabels[status];
 }
 
 function displayQuoteDate(value: string): string {
@@ -633,10 +637,7 @@ export function Quotes() {
             </label>
           </div>
           <ModalFooter>
-            <SecondaryButton
-              type="button"
-              onClick={() => setIsQuoteModalOpen(false)}
-            >
+            <SecondaryButton onClick={() => setIsQuoteModalOpen(false)}>
               Annuler
             </SecondaryButton>
             <PrimaryButton type="submit" disabled={isSaving}>
@@ -793,12 +794,14 @@ function StockMovements() {
   };
 
   const totalPages = result ? Math.ceil(result.total / pageSize) : 0;
-  const movementLabel = (movementKind: StockMovementKind) =>
+  const movementLabel = (
+    movementKind: StockMovementKind,
+  ): "Entrée" | "Sortie" | "Ajustement" =>
     ({
       ENTRY: "Entrée",
       EXIT: "Sortie",
       ADJUSTMENT: "Ajustement",
-    })[movementKind];
+    } as const)[movementKind];
   const formatMovementDate = (value: string) =>
     new Intl.DateTimeFormat("fr-FR", {
       day: "2-digit",
