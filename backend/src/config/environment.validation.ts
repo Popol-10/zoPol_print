@@ -10,6 +10,8 @@ export interface EnvironmentVariables {
   MYSQL_DATABASE: string;
   MYSQL_USER: string;
   MYSQL_PASSWORD: string;
+  MYSQL_SSL: boolean;
+  MYSQL_CONNECTION_LIMIT: number;
   JWT_ACCESS_SECRET: string;
   JWT_ACCESS_TTL: string;
   JWT_REFRESH_SECRET: string;
@@ -38,6 +40,8 @@ export function validateEnvironment(config: Record<string, unknown>): Environmen
     MYSQL_DATABASE: Joi.string().max(64).required(),
     MYSQL_USER: Joi.string().max(32).required(),
     MYSQL_PASSWORD: Joi.string().min(1).required(),
+    MYSQL_SSL: Joi.boolean().default(false),
+    MYSQL_CONNECTION_LIMIT: Joi.number().integer().min(1).max(20).default(3),
     JWT_ACCESS_SECRET: Joi.string().min(32).required(),
     JWT_ACCESS_TTL: Joi.string()
       .pattern(/^\d+[smhd]$/)

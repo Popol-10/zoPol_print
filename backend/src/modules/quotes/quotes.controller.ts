@@ -38,6 +38,15 @@ export class QuotesController {
     return this.quotesService.updateStatus(actor, quoteId, dto);
   }
 
+  @Post(':id/send')
+  @ApiOkResponse({ type: QuoteSummaryDto })
+  sendByEmail(
+    @CurrentUser() actor: AuthenticatedUser,
+    @Param('id', ParseUUIDPipe) quoteId: string,
+  ): Promise<QuoteSummaryDto> {
+    return this.quotesService.sendByEmail(actor, quoteId);
+  }
+
   @Post(':id/convert')
   @ApiOkResponse({ type: QuoteSummaryDto })
   convertToOrder(

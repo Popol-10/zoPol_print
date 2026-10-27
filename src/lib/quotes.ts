@@ -50,6 +50,11 @@ export const quotesApi = {
       body: JSON.stringify({ status }),
       headers: withBearer(accessToken),
     }),
+  send: (accessToken: string, quoteId: string) =>
+    apiRequest<QuoteRecord>(`/quotes/${quoteId}/send`, {
+      method: 'POST',
+      headers: withBearer(accessToken),
+    }),
   convert: (accessToken: string, quoteId: string) =>
     apiRequest<QuoteRecord>(`/quotes/${quoteId}/convert`, {
       method: "POST",

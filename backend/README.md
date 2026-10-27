@@ -15,7 +15,7 @@ npm run start:dev
 
 L'API est alors disponible sur `http://localhost:3001/api/v1` et la documentation Swagger sur `http://localhost:3001/api/docs` en développement.
 
-Le frontend déployé sur Vercel ne démarre pas cette API : il faut déployer `backend/` séparément, puis définir `VITE_API_URL` dans les variables Vercel et `FRONTEND_ORIGINS` côté API. Le dépôt contient une configuration Railway (Docker, migrations et health check). Suivre [`docs/vercel-deployment.md`](docs/vercel-deployment.md).
+Le frontend et l'API peuvent être déployés sur Vercel depuis le même dépôt comme deux projets : le frontend utilise la racine du dépôt et l'API utilise `backend/`. Une base MySQL distante reste nécessaire. Suivre [`docs/vercel-deployment.md`](docs/vercel-deployment.md) pour configurer les domaines, les variables, TLS et les migrations.
 
 ## Commandes utiles
 
@@ -32,7 +32,7 @@ npm run migration:run
 
 - `POST /auth/register` : crée l'organisation et son premier administrateur.
 - `POST /auth/login` : renvoie un access token et un refresh token.
-- La récupération par e-mail est configurée via SMTP : consultez `docs/email-setup.md`.
+- La récupération par e-mail et l'envoi des devis sont configurés via SMTP : consultez `docs/email-setup.md`.
 - `POST /auth/refresh` : renouvelle la paire de tokens.
 - `POST /auth/logout` : invalide le refresh token courant.
 - `GET /auth/me` : renvoie le profil connecté.
@@ -51,8 +51,9 @@ npm run migration:run
 
 Les détails sont dans [docs/organizations-api.md](docs/organizations-api.md), [docs/production-api.md](docs/production-api.md), [docs/purchases-api.md](docs/purchases-api.md) et [docs/stock-api.md](docs/stock-api.md). Les étapes réalisées sont dans [docs/implementation-steps.md](docs/implementation-steps.md).
 
-## Factures
+## Devis et factures
 
+- `GET/POST /quotes`, `POST /quotes/:id/send`, `PATCH /quotes/:id/status` et `POST /quotes/:id/convert` : crée, envoie par SMTP, suit et convertit les devis en commandes.
 - `GET /invoices`, `GET /invoices/eligible-orders` et `POST /invoices/from-order/:orderId` : consulte ou émet une facture depuis une commande.
 - La migration `Invoices20261017010000` est appliquée à la base locale configurée ; exécuter `npm run migration:run` dans chaque nouvel environnement.
 - Détails : [docs/invoices-api.md](docs/invoices-api.md).

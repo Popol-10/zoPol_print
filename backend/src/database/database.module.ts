@@ -17,6 +17,11 @@ import { EnvironmentVariables } from '../config/environment.validation';
         username: config.getOrThrow<string>('MYSQL_USER'),
         password: config.getOrThrow<string>('MYSQL_PASSWORD'),
         database: config.getOrThrow<string>('MYSQL_DATABASE'),
+        ssl: config.getOrThrow<boolean>('MYSQL_SSL') ? { rejectUnauthorized: true } : undefined,
+        extra: {
+          connectionLimit: config.getOrThrow<number>('MYSQL_CONNECTION_LIMIT'),
+          waitForConnections: true,
+        },
         autoLoadEntities: true,
         synchronize: false,
         migrationsRun: false,

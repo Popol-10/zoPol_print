@@ -50,8 +50,11 @@ function getApiBaseUrl(): string {
   return apiBaseUrl;
 }
 
-const connectionErrorMessage =
-  "Impossible de contacter l’API. Vérifiez son adresse publique, qu’elle est démarrée et que CORS autorise https://zo-print.vercel.app.";
+function getConnectionErrorMessage(): string {
+  const currentOrigin =
+    typeof window !== "undefined" ? window.location.origin : "l'origine du site";
+  return `Impossible de contacter l’API. Vérifiez son adresse publique, qu’elle est démarrée et que CORS autorise ${currentOrigin}.`;
+}
 
 export async function apiRequest<T>(
   path: string,
@@ -72,7 +75,7 @@ export async function apiRequest<T>(
       },
     });
   } catch {
-    throw new ApiError(connectionErrorMessage);
+    throw new ApiError(getConnectionErrorMessage());
   }
 
   if (response.status === 204) return undefined as T;
@@ -110,7 +113,7 @@ export async function apiBlobRequest(
       headers: { Accept: "image/*", ...init.headers },
     });
   } catch {
-    throw new ApiError(connectionErrorMessage);
+    throw new ApiError(getConnectionErrorMessage());
   }
 
   if (!response.ok) {

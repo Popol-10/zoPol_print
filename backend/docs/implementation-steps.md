@@ -124,3 +124,10 @@ L’installation npm du dossier `backend/` a été interrompue par l’environne
 - [x] Remplacer la page de démonstration par la liste API et la modale d'émission.
 - [x] Documenter les routes dans [`invoices-api.md`](invoices-api.md).
 - [x] Appliquer la migration `Invoices20261017010000` à la base MySQL configurée le 17 octobre 2026. La migration devra être exécutée dans chaque autre environnement.
+
+## Envoi des devis par e-mail — 27 octobre 2026
+
+- [x] Ajouter `POST /quotes/:id/send` : le serveur vérifie l'adresse du client, envoie le détail du devis avec SMTP et enregistre le statut ainsi que l'audit après acceptation du destinataire.
+- [x] Remplacer l'action « Marquer envoyé » par « Envoyer par e-mail » dans `/devis`.
+- [x] Documenter l'activation SMTP et les réponses en cas d'échec. Aucune migration n'est nécessaire.
+- [ ] Renseigner les identifiants SMTP du fournisseur dans les variables de l'API pour activer l'envoi en production.

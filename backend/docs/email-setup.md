@@ -1,13 +1,13 @@
-# Envoi réel des e-mails de récupération
+# Configuration des e-mails
 
-Le backend utilise SMTP et Nodemailer. Aucun fournisseur précis n'est imposé : utilisez les identifiants SMTP de votre fournisseur transactionnel ou de votre messagerie.
+Le backend utilise SMTP et Nodemailer pour les liens de récupération de mot de passe et l'envoi des devis. Aucun fournisseur précis n'est imposé : utilisez les identifiants SMTP de votre fournisseur transactionnel ou de votre messagerie.
 
 ## Configuration locale
 
 Dans `backend/.env`, renseignez des valeurs réelles et activez SMTP :
 
 ```dotenv
-RESET_PASSWORD_URL=http://localhost:8080/reinitialiser-mot-de-passe
+RESET_PASSWORD_URL=http://localhost:5173/reinitialiser-mot-de-passe
 
 SMTP_ENABLED=true
 SMTP_HOST=smtp.votre-fournisseur.com
@@ -22,11 +22,15 @@ Utilisez `SMTP_SECURE=true` seulement lorsque votre fournisseur exige TLS implic
 
 Pour Gmail, n'utilisez pas le mot de passe normal du compte : créez un mot de passe d'application, puis utilisez `smtp.gmail.com`, le port `587` et `SMTP_SECURE=false`.
 
+## Fonctionnement des devis
+
+Le bouton « Envoyer par e-mail » de `/devis` envoie le devis à l'adresse enregistrée sur la fiche du client. Le statut passe à « Envoyé » uniquement lorsque le serveur SMTP accepte le destinataire. Si l'envoi échoue, le devis reste en brouillon. Le message contient les lignes et le montant, sans pièce jointe PDF.
+
 ## Vérification
 
 1. Redémarrez le backend après avoir modifié `.env`.
-2. Sur `/connexion`, utilisez « Mot de passe oublié ? ».
-3. La réponse reste volontairement identique même si l'adresse n'existe pas.
-4. Lorsque SMTP est actif, le terminal affiche `E-mail de réinitialisation envoyé à ...` et le lien arrive dans la boîte du destinataire.
+2. Vérifiez que le client d'un devis possède une adresse e-mail valide.
+3. Depuis `/devis`, envoyez un brouillon et vérifiez la réception du message ; le statut doit passer à « Envoyé ».
+4. Sur `/connexion`, utilisez « Mot de passe oublié ? » pour vérifier aussi l'envoi du lien de récupération. La réponse API reste volontairement identique même si l'adresse n'existe pas.
 
 Ne commitez jamais `SMTP_PASSWORD` ni les secrets du fournisseur.

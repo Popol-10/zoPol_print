@@ -5,7 +5,7 @@ import {
   useState,
   type FormEvent,
 } from "react";
-import { CheckCircle2, Plus } from "lucide-react";
+import { CheckCircle2, Mail, Plus } from "lucide-react";
 import { currencyUnitLabel, formatAr } from "@/utils/format";
 import {
   PageHeader,
@@ -209,6 +209,27 @@ export function Quotes() {
     }
   };
 
+  const sendQuote = async (quote: QuoteRecord) => {
+    setWorkingQuoteId(quote.id);
+    setError(null);
+    setNotice("");
+    try {
+      const sent = await quotesApi.send(accessTokenOrThrow(), quote.id);
+      setQuotes((current) =>
+        current.map((item) => (item.id === sent.id ? sent : item)),
+      );
+      setNotice(`${sent.quoteNumber} a été envoyé par e-mail au client.`);
+    } catch (reason) {
+      setError(
+        reason instanceof Error
+          ? reason.message
+          : "Le devis n’a pas pu être envoyé par e-mail.",
+      );
+    } finally {
+      setWorkingQuoteId(null);
+    }
+  };
+
   const convertQuote = async (quote: QuoteRecord) => {
     setWorkingQuoteId(quote.id);
     setError(null);
@@ -255,7 +276,7 @@ export function Quotes() {
       <PageHeader
         eyebrow="Commerce"
         title="Devis"
-        description="Préparez des offres à partir du catalogue et convertissez les devis envoyés en commandes."
+        description="Préparez des offres à partir du catalogue, envoyez-les par e-mail et convertissez les devis acceptés en commandes."
         action={
           <PrimaryButton
             icon={Plus}
@@ -411,11 +432,26 @@ export function Quotes() {
                       {quote.status === "DRAFT" && (
                         <button
                           type="button"
-                          disabled={workingQuoteId === quote.id}
-                          onClick={() => void updateStatus(quote, "SENT")}
-                          className="rounded-lg bg-blue-50 px-2.5 py-1.5 text-xs font-bold text-blue-700 disabled:opacity-50"
+                          disabled={
+                            workingQuoteId === quote.id ||
+                            !clients
+                              .find((client) => client.id === quote.clientId)
+                              ?.email?.trim()
+                          }
+                          onClick={() => void sendQuote(quote)}
+                          title={
+                            clients.find((client) => client.id === quote.clientId)
+                              ?.email?.trim()
+                              ? undefined
+                              : "Ajoutez une adresse e-mail à la fiche du client."
+                          }
+                          className="inline-flex items-center gap-1.5 rounded-lg bg-blue-50 px-2.5 py-1.5 text-xs font-bold text-blue-700 disabled:opacity-50"
                         >
-                          Marquer envoyé
+                          <Mail className="h-3.5 w-3.5" />
+                          {clients.find((client) => client.id === quote.clientId)
+                            ?.email?.trim()
+                            ? "Envoyer par e-mail"
+                            : "E-mail client manquant"}
                         </button>
                       )}
                       {quote.status === "SENT" && (

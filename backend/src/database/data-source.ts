@@ -40,6 +40,11 @@ export default new DataSource({
   username: env.MYSQL_USER,
   password: env.MYSQL_PASSWORD,
   database: env.MYSQL_DATABASE,
+  ssl: env.MYSQL_SSL ? { rejectUnauthorized: true } : undefined,
+  extra: {
+    connectionLimit: env.MYSQL_CONNECTION_LIMIT,
+    waitForConnections: true,
+  },
   timezone: 'Z',
   entities: [
     Organization,

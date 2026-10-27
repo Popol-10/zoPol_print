@@ -1,6 +1,6 @@
 # Rapport d'intégration backend ERP
 
-**Mise à jour :** 19 octobre 2026
+**Mise à jour :** 27 octobre 2026
 
 Ce document suit le raccordement des écrans ERP aux API et à la base MySQL, module par module. Les migrations sont versionnées ; aucune synchronisation automatique du schéma n'est activée.
 
@@ -17,11 +17,11 @@ Ce document suit le raccordement des écrans ERP aux API et à la base MySQL, mo
 | Commandes             | Complétées, migration appliquée                                     | Connectée                                            | Intégré      |
 | Ventes                | API Commandes et paiements existante                                | Liste, filtres et indicateurs connectés              | Intégré      |
 | Factures              | Émission depuis commande, migration appliquée                       | Liste, recherche et soldes connectés                 | Intégré      |
-| Devis                 | API et migration appliquées                                         | Connectée, prix figé et filtres dynamiques           | Intégré      |
+| Devis                 | API et migration appliquées ; envoi SMTP disponible                 | Connectée, envoi par e-mail et filtres dynamiques    | Intégré      |
 | Production            | Complétées, migration appliquée                                     | Connectée                                            | Intégré      |
 | Planning              | Créneaux persistés, contrôles de chevauchement et audit              | Liste, création, modification et retrait connectés   | Intégré      |
-| Achats                | Commandes fournisseurs multi-lignes, migration appliquée            | Création et consultation connectées                  | Partiel      |
-| Réceptions            | Entrées du journal Stock et fournisseurs existants                  | Saisie unitaire et historique connectés              | Partiel      |
+| Achats                | Commandes fournisseurs multi-lignes et réceptions, migrations appliquées | Création, consultation et suivi des réceptions connectés | Intégré   |
+| Réceptions            | Bons liés aux commandes et entrées Stock hors commande              | Réceptions multi-lignes et historique connectés      | Intégré      |
 | Employés              | Annuaire connecté, migration appliquée                              | Connectée (liste, ajout, modification, archivage)    | Intégré      |
 | Tâches RH             | API et migration appliquées                                         | Connectée (liste, création, modification, archivage) | Intégré      |
 | Rémunération          | API et migration appliquées                                         | Connectée (consultation et mise à jour)              | Intégré      |
@@ -33,22 +33,16 @@ Ce document suit le raccordement des écrans ERP aux API et à la base MySQL, mo
 | Rapports              | Exports CSV construits depuis les agrégats Dashboard                | Connectée ; Finance/RH soumis aux rôles              | Intégré      |
 | Notifications         | Activités, alertes calculées et préférences ; migrations appliquées | Cloche et réglages ERP raccordés                     | Intégré      |
 
-## Déploiement Vercel — 19 octobre 2026
+## Préparation du déploiement Vercel — 19 octobre 2026
 
 - Le frontend utilisait `http://localhost:3001/api/v1` par défaut même dans un bundle de production ; depuis Vercel, cette adresse pointe sur l'ordinateur du visiteur et explique l'erreur « Impossible de joindre le serveur ».
-- En développement local, cette valeur de secours est conservée. En production, l'absence de `VITE_API_URL`, une URL locale, relative ou en HTTP affiche désormais une erreur de configuration explicite. Les erreurs réseau donnent aussi des pistes sur l'URL publique et CORS.
-- CORS autorise par défaut le domaine `https://zo-print.vercel.app`, et conserve les origines de développement locales. Les déploiements Preview doivent autoriser leur origine exacte dans `FRONTEND_ORIGINS`.
-- Ajout du guide [`vercel-deployment.md`](vercel-deployment.md) : l'API NestJS et MySQL doivent être hébergées séparément, `VITE_API_URL` doit pointer sur l'API publique et une nouvelle version Vercel doit être construite après changement de variable.
-- La variable Vercel et l'hébergement distant n'étant pas accessibles depuis ce dépôt, il reste à renseigner l'URL réelle de l'API dans le projet Vercel et à redéployer. Aucun secret n'est placé dans le frontend.
-
-## Préparation du déploiement API — 19 octobre 2026
-
-- Le propriétaire du projet a confirmé que l'API n'est pas encore hébergée ; le domaine API et `VITE_API_URL` ne peuvent donc pas encore être renseignés.
-- Ajout de `backend/Dockerfile` et `.dockerignore` pour construire l'API NestJS et exécuter l'application avec les dépendances de production.
-- Ajout du script `migration:run:prod`, qui applique les migrations TypeORM compilées, et de `backend/railway.json` pour les exécuter avant le déploiement et contrôler `/api/v1/health`.
-- Le guide Vercel décrit maintenant la création d'un service MySQL privé et d'un service API Railway, les variables requises, puis le raccordement du domaine API au projet Vercel. Les secrets restent saisis dans les tableaux de bord d'hébergement.
-- Étapes encore à faire côté propriétaire : pousser le dépôt sur GitHub, créer les services Railway et leur fournir les variables, générer le domaine API, renseigner `VITE_API_URL` dans Vercel et redéployer le frontend. Le coût de l'hébergeur dépend du plan et de l'usage.
-- Tests et builds non exécutés dans cette tranche.
+- En développement local, cette valeur de secours est conservée. En production, l'absence de `VITE_API_URL`, une URL locale, relative ou en HTTP affiche désormais une erreur de configuration explicite. Les erreurs réseau indiquent l'origine réellement ouverte dans le navigateur pour le diagnostic CORS, même si le domaine Vercel change.
+- CORS autorise par défaut le domaine `https://zo-print.vercel.app`, et conserve les origines de développement locales. Le nouveau domaine frontend doit être ajouté précisément à `FRONTEND_ORIGINS` côté API.
+- Ajout du guide [`vercel-deployment.md`](vercel-deployment.md) : le frontend Vite et l'API NestJS sont déployés depuis le même dépôt dans deux projets Vercel, puis reliés par `VITE_API_URL`.
+- Vercel exécute NestJS dans une fonction serverless ; une base de données distante reste indispensable. Le guide propose TiDB Cloud Starter en mode compatible MySQL pour un essai sans frais, avec TLS obligatoire, quotas et différences de compatibilité à considérer.
+- Le transfert prévu conserve les enregistrements applicatifs et l'historique TypeORM : sauvegarde de la base locale complète, import dans une base TiDB vide, comparaison des données, puis exécution des seules migrations en attente. La base locale et le dump doivent être gardés jusqu'à validation fonctionnelle. Aucun transfert n'a encore été exécuté, car la base distante n'est pas créée et ses identifiants ne sont pas disponibles.
+- Le backend accepte maintenant `MYSQL_SSL` et limite son pool par `MYSQL_CONNECTION_LIMIT` afin de connecter une base TLS et réduire les connexions simultanées en serverless. Le mode local conserve TLS désactivé par défaut.
+- Le domaine Vercel précédent a été supprimé. La création des deux projets, la base distante, les variables secrètes, l'application des migrations et les redéploiements restent à effectuer dans les comptes externes ; aucune valeur secrète n'est stockée dans Git.
 
 ## Module Clients — 26 septembre 2026
 
@@ -303,9 +297,37 @@ Ce document suit le raccordement des écrans ERP aux API et à la base MySQL, mo
 - Migration `ProductionSchedule20261017020000` : ajout de la date, de l'heure de début, de l'heure de fin et d'un index dans `production_tasks`. Appliquée à la base configurée le 17 octobre 2026 ; `migration:show` confirme 28 migrations enregistrées.
 - Documentation : [`production-api.md`](production-api.md). Vérification automatisée non lancée dans cette tranche.
 
+## Préparation du déploiement Vercel de l'API — 20 octobre 2026
+
+- Le projet Vercel `makart-api` est configuré avec TiDB Cloud en TLS, les clés JWT et l'origine frontend. Les mots de passe et secrets ne sont pas recopiés dans le rapport.
+- Le premier déploiement répondait HTTP 500. Les journaux ont montré des variables vides et des valeurs mal formatées. Les valeurs d'hôte MySQL, port, base, utilisateur, TLS, URL de réinitialisation et origine frontend ont été corrigées ; `MYSQL_PASSWORD` a été ressaisi par l'utilisateur dans l'invite sensible. Les deux clés JWT ont été générées séparément et conservées comme variables sensibles.
+- Les valeurs nécessitant un type ou une URI stricts ont été réécrites sans retour de ligne final. Cela a corrigé la validation NestJS.
+- Le déploiement Production final a réussi sous `https://makart-9kozln8rw-patrickmiavotra-3741s-projects.vercel.app`, avec l'alias stable `https://makart-api.vercel.app`.
+- Vérification du 20 octobre 2026 : `GET https://makart-api.vercel.app/api/v1/health` renvoie HTTP 200 et `{"status":"ok", ...}`.
+- L'ancien projet frontend étant absent, un nouveau projet `zo-print` a été créé et le dossier racine Vite y a été relié. `VITE_API_URL` a été configurée en Production avec `https://makart-api.vercel.app/api/v1`.
+- Déploiement frontend Production réussi le 20 octobre 2026 ; l'alias stable est `https://zo-print.vercel.app`. Le build Vite est réussi.
+- Vérifications : `/connexion` renvoie HTTP 200 ; le bundle de production contient bien l'URL d'API configurée ; `/api/v1/health` renvoie HTTP 200 depuis `https://zo-print.vercel.app` et retourne `Access-Control-Allow-Origin: https://zo-print.vercel.app`.
+- La connexion avec un compte utilisateur existant n'a pas été testée dans un navigateur. Garder la base MySQL locale et son dump jusqu'à validation de la connexion et des écrans ERP depuis le site public.
+
+## Import TiDB Cloud — 19 octobre 2026
+
+- Diagnostic de l'import arrêté sur `FK_notification_preferences_user` : dans le dump MySQL, `users.id` est en `VARCHAR(36)`, alors que `notification_preferences.user_id` est en `CHAR(36)`. TiDB refuse cette différence de type pour la clé étrangère.
+- Le même écart existe pour `notification_reads.user_id`, `user_profiles.user_id` et `purchase_receipts.actor_id`. La correction doit porter sur une copie du dump uniquement, en alignant ces colonnes sur `VARCHAR(36)` ; la sauvegarde originale est conservée.
+- Le dump comprend `DROP TABLE IF EXISTS` pour les tables exportées et désactive temporairement les contrôles de clés étrangères. Une réimportation de la copie corrigée remplace les tables déjà importées partiellement dans la base TiDB cible. Import et vérification des lignes restent à effectuer avant d'exécuter les migrations en attente.
+- L'utilisateur confirme le 19 octobre que l'import de la copie corrigée s'est terminé sans erreur et que les nombres de lignes des huit tables vérifiées (`users`, `organizations`, `clients`, `products`, `orders`, `purchase_orders`, `stock_items`, `finance_transactions`) correspondent entre MySQL local et TiDB.
+- Tentative de `npm run migration:run` : la configuration l'oriente encore vers `127.0.0.1:3307` (MySQL local). La connexion a été refusée par l'environnement d'exécution (`EPERM`) avant toute migration ; aucune modification de schéma n'a été faite. Il faut renseigner l'hôte et le port TiDB dans `backend/.env`, puis exécuter la commande depuis le terminal local de l'utilisateur.
+- Le 20 octobre, l'utilisateur a exécuté `npm run migration:run` depuis son terminal local avec la configuration TiDB : TypeORM se connecte, lit l'historique `migrations` et confirme `No migrations are pending`. Base importée, huit comptages comparés, schéma à jour.
+- Le projet API Vercel `makart-api` a été lié depuis `backend/`. Le 20 octobre, `MYSQL_HOST` a été ajouté pour Production. Les autres variables requises et le déploiement restent à faire.
+
+## Envoi des devis — 27 octobre 2026
+
+- Ajout de `POST /api/v1/quotes/:id/send` et raccordement du bouton `/devis` à cette route.
+- Le serveur envoie le détail du devis en texte et HTML à l'adresse de la fiche client. Le statut et l'audit ne sont enregistrés qu'après acceptation de l'adresse par SMTP ; en cas d'échec, le devis reste en brouillon.
+- Aucune migration n'est nécessaire. Les identifiants SMTP restent à configurer dans les variables de l'API avant l'envoi en production ; aucun secret n'est stocké dans le dépôt.
+
 ## Étapes suivantes
 
-- L’envoi réel des devis par e-mail n’est pas inclus.
+- L'envoi des devis par e-mail utilise la configuration SMTP de l'API. Les identifiants SMTP restent à renseigner dans l'environnement de déploiement pour activer la livraison.
 - Le backend expose `GET /api/v1/notifications`, `POST /api/v1/notifications/read`, `GET /api/v1/notifications/preferences` et `PUT /api/v1/notifications/preferences`. La cloche ERP affiche les activités auditées et les alertes calculées depuis les articles de stock, les commandes dues aujourd'hui/demain ou en retard, et les maintenances planifiées dans les cinq prochains jours ou en retard. Elle gère le compteur non lu, la navigation et la lecture persistante par compte. `/parametres` permet de régler ces alertes séparément pour chaque utilisateur.
 - Les journaux du 16 octobre signalaient l'absence de `notification_preferences`. Lors de l'intervention profil, l'historique MySQL indiquait `Notifications20261008010000` comme exécutée ; une vérification d'`INFORMATION_SCHEMA` sur la base configurée a confirmé la présence de `notification_preferences` et `notification_reads`. Aucune migration Notification ne reste en attente dans cette base. Si l'API reproduit encore l'ancien message, vérifier qu'elle utilise cette même base puis la redémarrer.
 - Les dates de commande sont calendaires, sans heure de livraison. Aucun envoi navigateur, e-mail ou SMS n’est inclus. Voir [`notifications-api.md`](notifications-api.md).

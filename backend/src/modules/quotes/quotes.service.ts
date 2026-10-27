@@ -1,10 +1,17 @@
 import { randomUUID } from 'node:crypto';
-import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  Injectable,
+  NotFoundException,
+  ServiceUnavailableException,
+} from '@nestjs/common';
 import { InjectDataSource, InjectRepository } from '@nestjs/typeorm';
 import { DataSource, Repository } from 'typeorm';
 import { AuditService } from '../audit/audit.service';
 import { AuditEvent } from '../audit/entities/audit-event.enum';
 import { Client } from '../clients/entities/client.entity';
+import { MailService } from '../mail/mail.service';
+import { Organization } from '../organizations/entities/organization.entity';
 import { SalesOrder } from '../orders/entities/sales-order.entity';
 import { OrderPriority } from '../orders/entities/order-priority.enum';
 import { OrderStatus } from '../orders/entities/order-status.enum';
@@ -28,6 +35,7 @@ export class QuotesService {
     @InjectDataSource()
     private readonly dataSource: DataSource,
     private readonly auditService: AuditService,
+    private readonly mailService: MailService,
   ) {}
 
   async findAll(organizationId: string): Promise<QuoteSummaryDto[]> {
@@ -115,13 +123,11 @@ export class QuotesService {
       if (quote.status === dto.status) return this.toSummary(quote);
 
       const allowed =
-        (quote.status === QuoteStatus.DRAFT && dto.status === QuoteStatus.SENT) ||
-        (quote.status === QuoteStatus.SENT &&
-          (dto.status === QuoteStatus.REFUSED || dto.status === QuoteStatus.EXPIRED));
+        quote.status === QuoteStatus.SENT &&
+        (dto.status === QuoteStatus.REFUSED || dto.status === QuoteStatus.EXPIRED);
       if (!allowed) {
         throw new BadRequestException('Cette transition de statut du devis n’est pas autorisée.');
       }
-      if (dto.status === QuoteStatus.SENT) this.assertValidUntil(quote.validUntil);
       if (dto.status === QuoteStatus.EXPIRED && quote.validUntil >= this.today()) {
         throw new BadRequestException('La date de validité du devis n’est pas encore dépassée.');
       }
@@ -136,6 +142,73 @@ export class QuotesService {
         entityType: 'QUOTE',
         entityId: saved.id,
         metadata: { from: previousStatus, to: saved.status },
+        manager,
+      });
+      return this.toSummary(saved);
+    });
+  }
+
+  async sendByEmail(actor: AuthenticatedUser, quoteId: string): Promise<QuoteSummaryDto> {
+    return this.dataSource.transaction(async (manager) => {
+      const quotes = manager.getRepository(Quote);
+      const quote = await quotes.findOne({
+        where: { id: quoteId, organizationId: actor.organizationId },
+        lock: { mode: 'pessimistic_write' },
+      });
+      if (!quote) throw new NotFoundException('Devis introuvable.');
+      if (quote.status === QuoteStatus.SENT) return this.toSummary(quote);
+      if (quote.status !== QuoteStatus.DRAFT) {
+        throw new BadRequestException('Seul un devis en brouillon peut être envoyé.');
+      }
+      this.assertValidUntil(quote.validUntil);
+      const client = await manager.getRepository(Client).findOneBy({
+        id: quote.clientId,
+        organizationId: actor.organizationId,
+      });
+      const organization = await manager
+        .getRepository(Organization)
+        .findOneBy({ id: actor.organizationId });
+      if (!client || !organization) {
+        throw new NotFoundException('Le client ou l’organisation du devis est introuvable.');
+      }
+      if (!this.mailService.isEnabled()) {
+        throw new ServiceUnavailableException(
+          'L’envoi de courriels n’est pas configuré sur le serveur.',
+        );
+      }
+      const recipient = client.email?.trim();
+      if (!recipient) {
+        throw new BadRequestException(
+          'Ajoutez une adresse e-mail à la fiche du client avant d’envoyer ce devis.',
+        );
+      }
+
+      await this.mailService.sendQuote({
+        recipient,
+        organizationName: organization.name,
+        currency: organization.currency,
+        quoteNumber: quote.quoteNumber,
+        clientName: quote.clientName,
+        clientCompany: quote.clientCompany,
+        productName: quote.productName,
+        productReference: quote.productReference,
+        machine: quote.machine,
+        quantity: quote.quantity,
+        unitPrice: Number(quote.unitPrice),
+        total: Number(quote.total),
+        validUntil: quote.validUntil,
+        note: quote.note,
+      });
+
+      quote.status = QuoteStatus.SENT;
+      const saved = await quotes.save(quote);
+      await this.auditService.record({
+        organizationId: actor.organizationId,
+        actorId: actor.id,
+        event: AuditEvent.QUOTE_STATUS_UPDATED,
+        entityType: 'QUOTE',
+        entityId: saved.id,
+        metadata: { from: QuoteStatus.DRAFT, to: QuoteStatus.SENT, delivery: 'EMAIL' },
         manager,
       });
       return this.toSummary(saved);
